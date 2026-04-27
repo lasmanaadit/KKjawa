@@ -2,21 +2,52 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
+
 import HomeScreen from './src/screens/HomeScreen';
-import DetailScreen from './src/screens/DetailScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
 import AboutScreen from './src/screens/AboutScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import DetailScreen from './src/screens/DetailScreen';
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// Bottom Tab Navigator (tanpa Detail)
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+          if (route.name === 'Beranda') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Favorit') iconName = focused ? 'heart' : 'heart-outline';
+          else if (route.name === 'Tentang') iconName = focused ? 'information-circle' : 'information-circle-outline';
+          else if (route.name === 'Akun Saya') iconName = focused ? 'person' : 'person-outline';
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#e17055',
+        tabBarInactiveTintColor: '#7f8c8d',
+        headerShown: false, // sembunyikan header bawaan tab, pakai header dari stack jika perlu
+      })}
+    >
+      <Tab.Screen name="Beranda" component={HomeScreen} />
+      <Tab.Screen name="Favorit" component={FavoritesScreen} />
+      <Tab.Screen name="Tentang" component={AboutScreen} />
+      <Tab.Screen name="Akun Saya" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
 
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Beranda' }} />
+      <Stack.Navigator>
+        {/* Tab utama sebagai root screen */}
+        <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+        {/* Halaman Detail terpisah, tab bar akan hilang */}
         <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detail Kesenian' }} />
-        <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Favorit Saya' }} />
-        <Stack.Screen name="About" component={AboutScreen} options={{ title: 'Tentang Aplikasi' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

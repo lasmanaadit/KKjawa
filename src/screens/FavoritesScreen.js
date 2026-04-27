@@ -1,14 +1,16 @@
 // src/screens/FavoritesScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, Alert } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { styles } from '../styles/styles';
 import GalleryCard from '../components/GalleryCard';
 import { galleryData } from '../data/galleryData';
 
 const FAVORITES_KEY = '@javanese_favorites';
 
-export default function FavoritesScreen({ navigation }) {
+export default function FavoritesScreen() {
+  const navigation = useNavigation();
   const [favorites, setFavorites] = useState([]);
 
   const loadFavorites = useCallback(async () => {
@@ -22,10 +24,11 @@ export default function FavoritesScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', loadFavorites);
-    return unsubscribe;
-  }, [navigation, loadFavorites]);
+  useFocusEffect(
+    useCallback(() => {
+      loadFavorites();
+    }, [loadFavorites])
+  );
 
   const handlePress = (item) => {
     navigation.navigate('Detail', { item });
