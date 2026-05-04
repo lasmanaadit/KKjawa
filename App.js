@@ -14,7 +14,6 @@ import DetailScreen from './src/screens/DetailScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Bottom Tab Navigator (tanpa Detail)
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -29,7 +28,7 @@ function MainTabs() {
         },
         tabBarActiveTintColor: '#e17055',
         tabBarInactiveTintColor: '#7f8c8d',
-        headerShown: false, // sembunyikan header bawaan tab, pakai header dari stack jika perlu
+        headerShown: false,
       })}
     >
       <Tab.Screen name="Beranda" component={HomeScreen} />
@@ -43,10 +42,13 @@ function MainTabs() {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        {/* Tab utama sebagai root screen */}
+      <Stack.Navigator
+        screenOptions={{
+          animation: 'slide_from_right', // Animasi slide dari kanan
+          gestureEnabled: true,          // Bisa geser kembali
+        }}
+      >
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-        {/* Halaman Detail terpisah, tab bar akan hilang */}
         <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detail Kesenian' }} />
       </Stack.Navigator>
     </NavigationContainer>

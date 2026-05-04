@@ -10,7 +10,6 @@ export default function DetailScreen({ route }) {
   const { item } = route.params;
   const [isFav, setIsFav] = useState(false);
 
-  // Cek status favorit saat komponen dimuat
   useEffect(() => {
     checkFavoriteStatus();
   }, []);
@@ -31,11 +30,9 @@ export default function DetailScreen({ route }) {
       let favIds = stored ? JSON.parse(stored) : [];
 
       if (isFav) {
-        // Hapus dari favorit
         favIds = favIds.filter(id => id !== item.id);
         Alert.alert('Info', `${item.title} dihapus dari favorit.`);
       } else {
-        // Tambah ke favorit
         if (!favIds.includes(item.id)) {
           favIds.push(item.id);
           Alert.alert('Sukses', `${item.title} ditambahkan ke favorit.`);
@@ -62,7 +59,6 @@ export default function DetailScreen({ route }) {
         <Text style={styles.detailAuthor}>{item.author}</Text>
         <Text style={styles.detailDescription}>{description}</Text>
 
-        {/* Tombol Favorit */}
         <TouchableOpacity
           style={[
             styles.favoriteButton,
