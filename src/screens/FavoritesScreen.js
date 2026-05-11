@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '../styles/styles';
 import GalleryCard from '../components/GalleryCard';
 import { galleryData } from '../data/galleryData';
@@ -36,21 +37,25 @@ export default function FavoritesScreen() {
 
   if (favorites.length === 0) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={styles.subtitle}>Belum ada favorit.</Text>
-        <Text style={{ color: '#7f8c8d' }}>Tekan ♡ pada halaman detail untuk menambahkan.</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', flex: 1 }]}>
+          <Text style={styles.subtitle}>Belum ada favorit.</Text>
+          <Text style={{ color: '#7f8c8d' }}>Tekan ♡ pada halaman detail untuk menambahkan.</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <FlatList
-      data={favorites}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={styles.container}
-      renderItem={({ item }) => (
-        <GalleryCard item={item} onPress={() => handlePress(item)} />
-      )}
-    />
+    <SafeAreaView style={styles.safeArea}>
+      <FlatList
+        data={favorites}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.container}
+        renderItem={({ item }) => (
+          <GalleryCard item={item} onPress={() => handlePress(item)} />
+        )}
+      />
+    </SafeAreaView>
   );
 }
