@@ -1,11 +1,16 @@
-// App.js
+// App.js (versi dengan Context)
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 
+// Screens (imports sama seperti sebelumnya)
+import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
 import AboutScreen from './src/screens/AboutScreen';
@@ -40,20 +45,44 @@ function MainTabs() {
   );
 }
 
+function AppStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+      <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detail Kesenian' }} />
+    </Stack.Navigator>
+  );
+}
+
+function AuthStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function RootNavigator() {
+  const { isLoggedIn } = useAuth();
+
+  if (isLoggedIn === null) {
+    return null; // Loading
+  }
+
+  return isLoggedIn ? <AppStack /> : <AuthStack />;
+}
+
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            animation: 'slide_from_right',
-            gestureEnabled: true,
-          }}
-        >
-          <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-          <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detail Kesenian' }} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
