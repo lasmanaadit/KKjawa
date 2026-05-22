@@ -4,23 +4,24 @@ import { View, Text, Image, ScrollView, TouchableOpacity, Alert, TextInput, Acti
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '../styles/styles';
-import { ENDPOINTS } from '../api/config';
+import { supabase } from '../api/supabase';
+import { useAuth } from '../context/AuthContext';
 
 const FAVORITES_KEY = '@javanese_favorites';
-const AUTH_KEY = '@auth_user';
 
 export default function DetailScreen({ route }) {
   const { item } = route.params;
+  const { user } = useAuth();
+  
   const [isFav, setIsFav] = useState(false);
   const [comment, setComment] = useState('');
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [allComments, setAllComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
-  const [user, setUser] = useState(null);
+  const [savingComment, setSavingComment] = useState(false);
 
-  // Load user data saat komponen mount
+  // Cek status favorit saat komponen mount
   useEffect(() => {
-    loadUser();
     checkFavoriteStatus();
   }, []);
 
@@ -31,17 +32,6 @@ export default function DetailScreen({ route }) {
       loadAllComments();
     }
   }, [user, item]);
-
-  const loadUser = async () => {
-    try {
-      const storedUser = await AsyncStorage.getItem(AUTH_KEY);
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (error) {
-      console.error('Gagal memuat user:', error);
-    }
-  };
 
   const checkFavoriteStatus = async () => {
     try {
@@ -57,11 +47,15 @@ export default function DetailScreen({ route }) {
   const loadUserComment = async () => {
     if (!user) return;
     try {
-      const response = await fetch(`${ENDPOINTS.comments}?userId=${user.id}&artId=${item.id}`);
-      const comments = await response.json();
+      const { data, error } = await supabase
+        .from('comments')
+        .select('comment')
+        .eq('user_id', user.id)
+        .eq('art_id', item.id)
+        .single();
       
-      if (comments.length > 0) {
-        setComment(comments[0].comment);
+      if (!error && data) {
+        setComment(data.comment);
       } else {
         setComment('');
       }
@@ -74,60 +68,70 @@ export default function DetailScreen({ route }) {
   const loadAllComments = async () => {
     setLoadingComments(true);
     try {
-      const response = await fetch(`${ENDPOINTS.comments}?artId=${item.id}`);
-      const comments = await response.json();
-      setAllComments(comments);
+      const { data, error } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('art_id', item.id)
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) {
+        setAllComments(data);
+      } else {
+        setAllComments([]);
+      }
     } catch (error) {
       console.error('Gagal memuat semua komentar:', error);
+      setAllComments([]);
     } finally {
       setLoadingComments(false);
     }
   };
 
+  // Simpan komentar (insert atau update)
   const saveComment = async () => {
     if (!user) {
       Alert.alert('Error', 'Silakan login terlebih dahulu');
       return;
     }
-
     if (!comment.trim()) {
       Alert.alert('Error', 'Komentar tidak boleh kosong');
       return;
     }
 
+    setSavingComment(true);
     try {
-      // Cek apakah sudah ada komentar dari user ini untuk kesenian ini
-      const checkResponse = await fetch(`${ENDPOINTS.comments}?userId=${user.id}&artId=${item.id}`);
-      const existingComments = await checkResponse.json();
+      // Cek apakah sudah ada komentar dari user ini
+      const { data: existing } = await supabase
+        .from('comments')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('art_id', item.id)
+        .single();
 
-      if (existingComments.length > 0) {
+      if (existing) {
         // UPDATE komentar yang sudah ada
-        const commentId = existingComments[0].id;
-        await fetch(`${ENDPOINTS.comments}/${commentId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...existingComments[0],
-            comment: comment,
-            updatedAt: new Date().toISOString(),
-          }),
-        });
+        const { error } = await supabase
+          .from('comments')
+          .update({ 
+            comment: comment.trim(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+        
+        if (error) throw error;
       } else {
-        // CREATE komentar baru
-        const newComment = {
-          userId: user.id,
-          userName: user.name,
-          artId: item.id,
-          artTitle: item.title,
-          comment: comment,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        await fetch(ENDPOINTS.comments, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newComment),
-        });
+        // INSERT komentar baru
+        const { error } = await supabase
+          .from('comments')
+          .insert([{
+            user_id: user.id,
+            user_name: user.user_metadata?.name || user.email?.split('@')[0] || 'Pengguna',
+            art_id: item.id,
+            art_title: item.title,
+            comment: comment.trim(),
+          }]);
+        
+        if (error) throw error;
       }
 
       Alert.alert('Berhasil', 'Komentar disimpan');
@@ -139,6 +143,8 @@ export default function DetailScreen({ route }) {
     } catch (error) {
       console.error('Gagal menyimpan komentar:', error);
       Alert.alert('Error', 'Gagal menyimpan komentar');
+    } finally {
+      setSavingComment(false);
     }
   };
 
@@ -168,6 +174,13 @@ export default function DetailScreen({ route }) {
   const description = item.description || 
     `${item.title} merupakan warisan budaya Jawa yang terkenal dari ${item.author}. ` +
     `Nikmati keindahannya dan lestarikan budaya Indonesia.`;
+
+  // Format tanggal
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
@@ -200,9 +213,16 @@ export default function DetailScreen({ route }) {
                 numberOfLines={4}
                 value={comment}
                 onChangeText={setComment}
+                editable={!savingComment}
               />
-              <TouchableOpacity style={styles.saveCommentButton} onPress={saveComment}>
-                <Text style={styles.saveCommentButtonText}>💾 Simpan Komentar</Text>
+              <TouchableOpacity 
+                style={[styles.saveCommentButton, savingComment && { opacity: 0.6 }]} 
+                onPress={saveComment}
+                disabled={savingComment}
+              >
+                <Text style={styles.saveCommentButtonText}>
+                  {savingComment ? 'Menyimpan...' : '💾 Simpan Komentar'}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -233,9 +253,9 @@ export default function DetailScreen({ route }) {
               allComments.map((cmt, index) => (
                 <View key={cmt.id || index} style={styles.otherCommentCard}>
                   <View style={styles.otherCommentHeader}>
-                    <Text style={styles.otherCommentName}>{cmt.userName || 'Anonymous'}</Text>
+                    <Text style={styles.otherCommentName}>{cmt.user_name || 'Anonymous'}</Text>
                     <Text style={styles.otherCommentDate}>
-                      {cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString('id-ID') : ''}
+                      {formatDate(cmt.created_at)}
                     </Text>
                   </View>
                   <Text style={styles.otherCommentText}>{cmt.comment}</Text>

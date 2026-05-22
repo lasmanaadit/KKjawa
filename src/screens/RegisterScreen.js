@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '../styles/styles';
-import { API_BASE_URL } from '../api/config';
+import { useAuth } from '../context/AuthContext';
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -11,25 +11,34 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
 
   const handleRegister = async () => {
-    // Validasi input
+    // Validasi nama
     if (!name.trim()) {
       Alert.alert('Error', 'Nama wajib diisi');
       return;
     }
+    
+    // Validasi email
     if (!email.trim()) {
       Alert.alert('Error', 'Email wajib diisi');
       return;
     }
+    
+    // Validasi password
     if (!password.trim()) {
       Alert.alert('Error', 'Password wajib diisi');
       return;
     }
+    
+    // Validasi konfirmasi password
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Password tidak cocok');
       return;
     }
+    
+    // Validasi panjang password
     if (password.length < 4) {
       Alert.alert('Error', 'Password minimal 4 karakter');
       return;
@@ -37,55 +46,21 @@ export default function RegisterScreen({ navigation }) {
 
     setLoading(true);
     try {
-      // Cek apakah email sudah terdaftar
-      const checkUrl = `${API_BASE_URL}/users?email=${email}`;
-      console.log('Checking URL:', checkUrl);
-      
-      const checkResponse = await fetch(checkUrl);
-      
-      if (!checkResponse.ok) {
-        throw new Error(`HTTP ${checkResponse.status}`);
-      }
-      
-      const existingData = await checkResponse.json();
-      const existingUsers = Array.isArray(existingData) ? existingData : [];
-      
-      if (existingUsers.length > 0) {
-        Alert.alert('Error', 'Email sudah terdaftar');
-        setLoading(false);
-        return;
-      }
-
-      // Buat user baru
-      const newUser = {
-        name,
-        email,
-        password,
-        createdAt: new Date().toISOString(),
-      };
-
-      const createUrl = `${API_BASE_URL}/users`;
-      console.log('Creating at URL:', createUrl);
-      
-      const createResponse = await fetch(createUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser),
-      });
-
-      console.log('Create response status:', createResponse.status);
-
-      if (createResponse.ok) {
-        Alert.alert('Berhasil', 'Akun berhasil dibuat, silakan login');
-        navigation.goBack();
-      } else {
-        const errorText = await createResponse.text();
-        console.error('Create failed:', errorText);
-        Alert.alert('Error', `Gagal membuat akun: ${createResponse.status}`);
-      }
+      await register(name.trim(), email.trim(), password);
+      Alert.alert(
+        'Berhasil', 
+        'Akun berhasil dibuat! Silakan login.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       console.error('Register error:', error);
-      Alert.alert('Error', `Terjadi kesalahan: ${error.message}`);
+      let errorMessage = 'Terjadi kesalahan';
+      if (error.message === 'Email sudah terdaftar') {
+        errorMessage = 'Email sudah terdaftar, silakan gunakan email lain';
+      } else {
+        errorMessage = error.message;
+      }
+      Alert.alert('Gagal', errorMessage);
     } finally {
       setLoading(false);
     }

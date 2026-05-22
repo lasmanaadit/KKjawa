@@ -1,41 +1,44 @@
+// src/screens/LoginScreen.js
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '../styles/styles';
-import { API_BASE_URL } from '../api/config';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth(); // <-- ambil fungsi login dari context
+  const { login } = useAuth();
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Email dan password wajib diisi');
+    // Validasi input
+    if (!email.trim()) {
+      Alert.alert('Error', 'Email wajib diisi');
+      return;
+    }
+    if (!password.trim()) {
+      Alert.alert('Error', 'Password wajib diisi');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/users?email=${email}`);
-      
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
-      const data = await response.json();
-      const users = Array.isArray(data) ? data : [];
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (user) {
-        await login(user); // <-- panggil fungsi login dari context
-        Alert.alert('Berhasil', 'Login sukses');
-        // Tidak perlu navigation.reset lagi! Context akan otomatis mengganti navigator
-      } else {
-        Alert.alert('Gagal', 'Email atau password salah');
-      }
+      await login(email.trim(), password);
+      Alert.alert('Berhasil', 'Login sukses');
+      // Setelah login sukses, AuthContext akan otomatis mengupdate isLoggedIn
+      // dan navigasi akan berpindah ke MainApp
     } catch (error) {
-      Alert.alert('Error', error.message);
+      console.error('Login error:', error);
+      let errorMessage = 'Terjadi kesalahan';
+      if (error.message === 'User tidak ditemukan') {
+        errorMessage = 'Email tidak terdaftar';
+      } else if (error.message === 'Password salah') {
+        errorMessage = 'Password salah';
+      } else {
+        errorMessage = error.message;
+      }
+      Alert.alert('Gagal', errorMessage);
     } finally {
       setLoading(false);
     }
